@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="ServiceStack.Redis" Version="5.10.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SimpleLINQ\SimpleLINQ.csproj" />
+  </ItemGroup>
+</Project>

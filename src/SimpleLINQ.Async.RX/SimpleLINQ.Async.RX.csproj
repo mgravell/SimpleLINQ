@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>SimpleLINQ.Async</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Linq.Async.Queryable" Version="5.0.0" />
+    <ProjectReference Include="..\SimpleLINQ\SimpleLINQ.csproj" />
+  </ItemGroup>
+</Project>
