@@ -3,6 +3,10 @@ using Microsoft.EntityFrameworkCore.Query;
 using SimpleLINQ.Async.Internal;
 using System.Linq;
 
+// note on namespace choice: Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions and SimpleLINQ.Async.QueryableAsyncExtensions both
+// have .CountAsync(this IQueryable<T>) etc; if we just used SimpleLINQ.Async, then this could cause problems; the idea here is that someone
+// using Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions can use SimpleLINQ.Async.EntityFrameworkCore but not SimpleLINQ.Async,
+// meaning that they *avoid* any conflicts
 namespace SimpleLINQ.Async.EntityFrameworkCore
 {
     /// <summary>

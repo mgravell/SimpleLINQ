@@ -1,28 +1,29 @@
-using SimpleLINQ.Async;
+using Microsoft.EntityFrameworkCore;
+using SimpleLINQ.Async.EntityFrameworkCore;
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
 namespace SimpleLINQ.Test
 {
-    public class BasicUsageRXAsync
+    public class BasicUsageEntityFrameworkCoreAsync
     {
-        static IAsyncQueryable<Foo> CreateQuery(int count = 0)
+        static IQueryable<Foo> CreateQuery(int count = 0)
         {
-            if (count == 0) return NullQueryProvider<Foo>.Default.CreateQuery<Foo>().AsAsyncQueryable();
+            if (count == 0) return NullQueryProvider<Foo>.Default.CreateQuery<Foo>().PrepareForAsync();
 
             var arr = new Foo[count];
             for (int i = 0; i < count; i++)
             {
                 arr[i] = new Foo();
             }
-            return new NullQueryProvider<Foo>(arr).CreateQuery<Foo>().AsAsyncQueryable();
+            return new NullQueryProvider<Foo>(arr).CreateQuery<Foo>().PrepareForAsync();
         }
 
         [Fact]
         public async Task CanApplyCountAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             query = query.Where(x => x.Bar == "abc" && x.Blap == 123);
             await query.CountAsync();
         }
@@ -30,14 +31,14 @@ namespace SimpleLINQ.Test
         [Fact]
         public async Task CanApplyCountWithPredicateAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             await query.CountAsync(x => x.Bar == "abc" && x.Blap == 123);
         }
 
         [Fact]
         public async Task CanApplyLongCountAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             query = query.Where(x => x.Bar == "abc" && x.Blap == 123);
             await query.LongCountAsync();
         }
@@ -45,14 +46,14 @@ namespace SimpleLINQ.Test
         [Fact]
         public async Task CanApplyLongCountWithPredicateAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             await query.LongCountAsync(x => x.Bar == "abc" && x.Blap == 123);
         }
 
         [Fact]
         public async Task CanApplyFirstOrDefaultAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             query = query.Where(x => x.Bar == "abc" && x.Blap == 123);
             await query.FirstOrDefaultAsync();
         }
@@ -60,14 +61,14 @@ namespace SimpleLINQ.Test
         [Fact]
         public async Task CanApplyFirstOrDefaultWithPredicateAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             await query.FirstOrDefaultAsync(x => x.Bar == "abc" && x.Blap == 123);
         }
 
         [Fact]
         public async Task CanApplyFirstAsync()
         {
-            var query = CreateQuery(2);
+            IQueryable<Foo> query = CreateQuery(2);
             query = query.Where(x => (x.Bar == "abc" && x.Blap == 123) || true);
             await query.FirstAsync();
         }
@@ -75,14 +76,14 @@ namespace SimpleLINQ.Test
         [Fact]
         public async Task CanApplyFirstWithPredicateAsync()
         {
-            var query = CreateQuery(2);
-            await query.FirstAsync(x => (x.Bar == "abc" && x.Blap == 123) || true);
+            IQueryable<Foo> query = CreateQuery(2);
+            await query.FirstAsync(x =>( x.Bar == "abc" && x.Blap == 123) || true);
         }
 
         [Fact]
         public async Task CanApplySingleAsync()
         {
-            var query = CreateQuery(1);
+            IQueryable<Foo> query = CreateQuery(1);
             query = query.Where(x => (x.Bar == "abc" && x.Blap == 123) || true);
             await query.SingleAsync();
         }
@@ -90,14 +91,14 @@ namespace SimpleLINQ.Test
         [Fact]
         public async Task CanApplySingleWithPredicateAsync()
         {
-            var query = CreateQuery(1);
+            IQueryable<Foo> query = CreateQuery(1);
             await query.SingleAsync(x => (x.Bar == "abc" && x.Blap == 123) || true);
         }
 
         [Fact]
         public async Task CanApplySingleOrDefaultAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             query = query.Where(x => x.Bar == "abc" && x.Blap == 123);
             await query.SingleOrDefaultAsync();
         }
@@ -105,28 +106,28 @@ namespace SimpleLINQ.Test
         [Fact]
         public async Task CanApplySingleOrDefaultWithPredicateAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             await query.SingleOrDefaultAsync(x => x.Bar == "abc" && x.Blap == 123);
         }
 
         [Fact]
         public async Task CanCallAnyAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             await query.Where(x => x.Bar == "abc" && x.Blap == 123).AnyAsync();
         }
 
         [Fact]
         public async Task CanCallAnyPredicateAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             await query.AnyAsync(x => x.Bar == "abc" && x.Blap == 123);
         }
 
         [Fact]
         public async Task CanCallToListAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             await query.Where(x => x.Bar == "abc" && x.Blap == 123).ToListAsync();
         }
 
@@ -140,7 +141,7 @@ namespace SimpleLINQ.Test
         [Fact]
         public async Task CanCallAllPredicateAsync()
         {
-            var query = CreateQuery();
+            IQueryable<Foo> query = CreateQuery();
             await query.AllAsync(x => x.Bar == "abc" && x.Blap == 123);
         }
 

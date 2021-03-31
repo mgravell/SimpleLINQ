@@ -1,62 +1,63 @@
-﻿using ServiceStack.Redis;
-using SimpleLINQ.Transports;
+﻿using StackExchange.Redis;
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SimpleLINQ.ServiceStack.Redis
+namespace SimpleLINQ.Transports.StackExchange.Redis
 {
     /// <summary>
-    /// A <see cref="Transport"/> implementation that can talk to Redis via ServiceStack.Redis
+    /// A <see cref="Transport"/> implementation that can talk to Redis via StackExchange.Redis
     /// </summary>
-    public class NativeClientTransport : Transport
+    public class DatabaseTransport : Transport
     {
-        private readonly IRedisNativeClient _client;
+        private readonly IDatabase _db;
         /// <summary>
         /// Create a new instance
         /// </summary>
-        public NativeClientTransport(IRedisNativeClient client)
-            => _client = client ?? throw new ArgumentNullException(nameof(client));
+        public DatabaseTransport(IDatabase db)
+            => _db = db ?? throw new ArgumentNullException(nameof(db));
 
+        private static string GetCommand(ReadOnlySpan<object?> command, out object?[] args)
+        {
+            string? cmd = command.IsEmpty ? null : command[0]?.ToString();
+            if (string.IsNullOrWhiteSpace(cmd))
+                throw new InvalidOperationException("No command to issue");
+            args = command.Slice(1).ToArray();
+            return cmd;
+        }
         /// <inheritdoc/>
         public override object? Execute(ReadOnlySpan<object?> command)
         {
-            if (command.IsEmpty)
-                throw new InvalidOperationException("No command to issue");
-            return _client.RawCommand(command.ToArray());
+            var cmd = GetCommand(command, out var args);
+            return _db.Execute(cmd, args);
         }
-
         /// <inheritdoc/>
         public override async ValueTask<object?> ExecuteAsync(ReadOnlyMemory<object?> command, CancellationToken cancellationToken)
         {
-            if (command.IsEmpty)
-                throw new InvalidOperationException("No command to issue");
-            if (_client is not IRedisNativeClientAsync asyncClient)
-                throw new InvalidOperationException($"The redis client ('{_client.GetType().FullName}') does not support async operations");
-            return await asyncClient.RawCommandAsync(command.Span.ToArray(), cancellationToken).ConfigureAwait(false);
+            var cmd = GetCommand(command.Span, out var args);
+            return await _db.ExecuteAsync(cmd, args).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
         public override object? GetArrayItem(object value, int index)
         {
-            if (value is RedisData rd && rd.Children is { } typed)
+            if (value is RedisResult rr && rr.Type == ResultType.MultiBulk)
             {
+                var typed = (RedisResult[])rr;
                 return typed[index];
             }
             return base.GetArrayItem(value, index);
         }
-
         /// <inheritdoc/>
         public override void CopyArrayTo(object value, Span<object?> target)
         {
-            if (value is RedisData rd && rd.Children is { } typed)
+            if (value is RedisResult rr && rr.Type == ResultType.MultiBulk)
             {
-                int index = 0;
-                foreach (var child in typed)
+                var typed = (RedisResult[])rr;
+                for (int i = 0; i < typed.Length; i++)
                 {
-                    target[index++] = child;
+                    target[i] = typed[i];
                 }
             }
             else
@@ -64,15 +65,22 @@ namespace SimpleLINQ.ServiceStack.Redis
                 base.CopyArrayTo(value, target);
             }
         }
-
         /// <inheritdoc/>
         public override bool IsArray([NotNullWhen(true)] object? value, out int length)
         {
-            if (value is RedisData rd)
+            if (value is RedisResult rr)
             {
-                if (rd.Children is { } typed)
+                if (rr.Type == ResultType.MultiBulk)
                 {
-                    length = typed.Count;
+                    if (rr.IsNull)
+                    {
+                        length = -1;
+                    }
+                    else
+                    {
+                        var typed = (RedisResult[])rr;
+                        length = typed is null ? -1 : typed.Length;
+                    }
                     return true;
                 }
                 else
@@ -87,19 +95,18 @@ namespace SimpleLINQ.ServiceStack.Redis
         /// <inheritdoc/>
         public override int GetInt32(object? value)
         {
-            if (value is RedisData rd)
+            if (value is RedisResult rr)
             {
-                return checked((int)rd.ToInt64());
+                return (int)rr;
             }
             return base.GetInt32(value);
         }
-
         /// <inheritdoc/>
         public override long GetInt64(object? value)
         {
-            if (value is RedisData rd)
+            if (value is RedisResult rr)
             {
-                return rd.ToInt64();
+                return (long)rr;
             }
             return base.GetInt64(value);
         }
@@ -107,29 +114,27 @@ namespace SimpleLINQ.ServiceStack.Redis
         /// <inheritdoc/>
         public override string? GetString(object? value)
         {
-            if (value is RedisData rd)
+            if (value is RedisResult rr)
             {
-                return rd.Data is null ? null : Encoding.UTF8.GetString(rd.Data);
+                return (string)rr;
             }
             return base.GetString(value);
         }
-
         /// <inheritdoc/>
         public override double GetDouble(object? value)
         {
-            if (value is RedisData rd)
+            if (value is RedisResult rr)
             {
-                return rd.ToDouble();
+                return (double)rr;
             }
             return base.GetDouble(value);
         }
-
         /// <inheritdoc/>
         public override float GetSingle(object? value)
         {
-            if (value is RedisData rd)
+            if (value is RedisResult rr)
             {
-                return (float)rd.ToDouble();
+                return (float)(double)rr;
             }
             return base.GetSingle(value);
         }

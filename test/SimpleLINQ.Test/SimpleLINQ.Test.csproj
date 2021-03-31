@@ -18,10 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\SimpleLINQ.Async.EF\SimpleLINQ.Async.EF.csproj" />
-    <ProjectReference Include="..\..\src\SimpleLINQ.Async.RX\SimpleLINQ.Async.RX.csproj" />
-    <ProjectReference Include="..\..\src\SimpleLINQ.ServiceStack.Redis\SimpleLINQ.ServiceStack.Redis.csproj" />
-    <ProjectReference Include="..\..\src\SimpleLINQ.StackExchange.Redis\SimpleLINQ.StackExchange.Redis.csproj" />
+    <ProjectReference Include="..\..\src\SimpleLINQ.Async.EntityFramework\SimpleLINQ.Async.EntityFramework.csproj" />
+    <ProjectReference Include="..\..\src\SimpleLINQ.Async.Reactive\SimpleLINQ.Async.Reactive.csproj" />
+    <ProjectReference Include="..\..\src\SimpleLINQ.Transports.ServiceStack.Redis\SimpleLINQ.Transports.ServiceStack.Redis.csproj" />
+    <ProjectReference Include="..\..\src\SimpleLINQ.Transports.StackExchange.Redis\SimpleLINQ.Transports.StackExchange.Redis.csproj" />
     <ProjectReference Include="..\..\src\SimpleLINQ\SimpleLINQ.csproj" />
   </ItemGroup>
 </Project>
