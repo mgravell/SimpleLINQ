@@ -121,11 +121,11 @@ namespace SimpleLINQ
 
                     if ((mmethod.DeclaringType == typeof(Queryable)
                     || mmethod.DeclaringType?.FullName == "System.Linq.AsyncQueryable"
-                        ) && (mce.Arguments[0] as ConstantExpression)?.Value is Query oorigin)
+                        ) && (mce.Arguments[0] as ConstantExpression)?.Value is Query origin)
                     {
                         args = mce.Arguments;
                         method = mmethod;
-                        query = oorigin;
+                        query = origin;
                         return true;
                     }
                     break;
