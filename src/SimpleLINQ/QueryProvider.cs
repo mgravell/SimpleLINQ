@@ -103,13 +103,13 @@ namespace SimpleLINQ
         [SuppressMessage("Style", "IDE0066:Convert switch statement to expression", Justification = "Readability")]
         internal static void ThrowNotSupported(Expression expression, [CallerMemberName] string? caller = null)
         {
-            switch (expression.NodeType)
+            throw expression.NodeType switch
             {
-                case ExpressionType.Call when expression is MethodCallExpression mce
-                    && mce.Method is MethodInfo method:
-                    throw new NotSupportedException($"Unhandled '{expression.NodeType}' ('{method.Name}') expression to '{caller}': '{method}' on '{method.DeclaringType?.FullName}'");
-            }
-            throw new NotSupportedException($"Unhandled '{expression.NodeType}' expression to '{caller}'");
+                ExpressionType.Call when expression is MethodCallExpression mce && mce.Method is { } method => new
+                    NotSupportedException(
+                        $"Unhandled '{expression.NodeType}' ('{method.Name}') expression to '{caller}': '{method}' on '{method.DeclaringType?.FullName}'"),
+                _ => new NotSupportedException($"Unhandled '{expression.NodeType}' expression to '{caller}'")
+            };
         }
 
         internal static bool IsFromQueryable(Expression expression, [NotNullWhen(true)] out MethodInfo? method, [NotNullWhen(true)] out ReadOnlyCollection<Expression>? args, [NotNullWhen(true)] out Query? query)
@@ -117,15 +117,15 @@ namespace SimpleLINQ
             switch (expression.NodeType)
             {
                 case ExpressionType.Call when expression is MethodCallExpression mce
-                    && mce.Method is MethodInfo mmethod:
+                    && mce.Method is { } mmethod:
 
                     if ((mmethod.DeclaringType == typeof(Queryable)
                     || mmethod.DeclaringType?.FullName == "System.Linq.AsyncQueryable"
-                        ) && (mce.Arguments[0] as ConstantExpression)?.Value is Query oorigin)
+                        ) && (mce.Arguments[0] as ConstantExpression)?.Value is Query origin)
                     {
                         args = mce.Arguments;
                         method = mmethod;
-                        query = oorigin;
+                        query = origin;
                         return true;
                     }
                     break;

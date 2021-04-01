@@ -182,7 +182,7 @@ namespace SimpleLINQ.Test
         public void CanCallAny()
         {
             IQueryable<Foo> query = CreateQuery();
-            query.Where(x => x.Bar == "abc" && x.Blap == 123).Any();
+            query.Any(x => x.Bar == "abc" && x.Blap == 123);
         }
 
         [Fact]
