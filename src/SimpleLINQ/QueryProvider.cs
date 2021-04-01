@@ -106,7 +106,7 @@ namespace SimpleLINQ
             switch (expression.NodeType)
             {
                 case ExpressionType.Call when expression is MethodCallExpression mce
-                    && mce.Method is MethodInfo method:
+                    && mce.Method is { } method:
                     throw new NotSupportedException($"Unhandled '{expression.NodeType}' ('{method.Name}') expression to '{caller}': '{method}' on '{method.DeclaringType?.FullName}'");
             }
             throw new NotSupportedException($"Unhandled '{expression.NodeType}' expression to '{caller}'");
@@ -117,7 +117,7 @@ namespace SimpleLINQ
             switch (expression.NodeType)
             {
                 case ExpressionType.Call when expression is MethodCallExpression mce
-                    && mce.Method is MethodInfo mmethod:
+                    && mce.Method is { } mmethod:
 
                     if ((mmethod.DeclaringType == typeof(Queryable)
                     || mmethod.DeclaringType?.FullName == "System.Linq.AsyncQueryable"
