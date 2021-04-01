@@ -18,8 +18,8 @@ namespace SimpleLINQ.Internal
         
         public override long Skip => _skip;
         public override long Take => _take;
-        public override object? ProviderState => _providerState;
-        public override QueryProvider Provider => _provider;
+        internal override object? ProviderState => _providerState;
+        internal override QueryProvider Provider => _provider;
         public override LambdaExpression? Predicate => _predicate;
 
         public override Type ElementType => typeof(T);

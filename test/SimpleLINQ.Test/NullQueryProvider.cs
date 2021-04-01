@@ -20,7 +20,7 @@ namespace SimpleLINQ.Test
 
         internal override bool AllowExpensiveAggregates => true;
 
-        public override IEnumerator<TElement> GetEnumerator<TElement>(Query query)
+        protected internal override IEnumerator<TElement> GetEnumerator<TElement>(Query query)
         {
             var terms = query.ActiveTerms;
             void ConsiderHandled(QueryTerms handled)
@@ -66,7 +66,7 @@ namespace SimpleLINQ.Test
             }
         }
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        public async override IAsyncEnumerator<TElement> GetAsyncEnumerator<TElement>(Query query, CancellationToken cancellationToken)
+        protected internal async override IAsyncEnumerator<TElement> GetAsyncEnumerator<TElement>(Query query, CancellationToken cancellationToken)
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
             cancellationToken.ThrowIfCancellationRequested();

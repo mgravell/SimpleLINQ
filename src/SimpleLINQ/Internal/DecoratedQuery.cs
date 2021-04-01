@@ -61,8 +61,8 @@ namespace SimpleLINQ.Internal
         public override Type OriginType => _tail.OriginType;
         public override LambdaExpression? Predicate => _tail.Predicate;
         public override LambdaExpression? Projection => _tail.Projection;
-        public override QueryProvider Provider => _tail.Provider;
-        public override object? ProviderState => _tail.ProviderState;
+        internal override QueryProvider Provider => _tail.Provider;
+        internal override object? ProviderState => _tail.ProviderState;
         public override long Skip => _tail.Skip;
         public override long Take => _tail.Take;
     }

@@ -28,11 +28,11 @@ namespace SimpleLINQ
         /// <summary>
         /// Opaque provider state (implementation-specific)
         /// </summary>
-        public virtual object? ProviderState => null;
+        internal abstract object? ProviderState { get; }
         /// <summary>
         /// Gets the provider for this query (implementation-specific)
         /// </summary>
-        public abstract QueryProvider Provider { get; }
+        internal abstract QueryProvider Provider { get; }
         /// <summary>
         /// Gets the number of order-by clauses for this query
         /// </summary>

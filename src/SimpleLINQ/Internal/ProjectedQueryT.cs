@@ -25,7 +25,7 @@ namespace SimpleLINQ.Internal
 
         Expression IQueryable.Expression => Expression.Constant(this);
 
-        public override QueryProvider Provider => _tail.Provider;
+        internal override QueryProvider Provider => _tail.Provider;
 
         public override long Skip => _tail.Skip;
 
@@ -33,7 +33,7 @@ namespace SimpleLINQ.Internal
 
         public override LambdaExpression? Predicate => _tail.Predicate;
 
-        public override object? ProviderState => _tail.ProviderState;
+        internal override object? ProviderState => _tail.ProviderState;
 
         public override int OrderCount => _tail.OrderCount;
 

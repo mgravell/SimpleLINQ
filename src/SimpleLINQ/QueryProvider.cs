@@ -22,9 +22,19 @@ namespace SimpleLINQ
         /// <summary>
         /// Create a new query against this provider, optionally including state
         /// </summary>
-        protected IQueryable<T> CreateQuery<T>(object? providerState = null) => new Query<T>(this, providerState);
-        IQueryable IQueryProvider.CreateQuery(Expression expression)
-            => CreateQuery(expression);
+        protected IQueryable<T> CreateQuery<T>(object? state = null) => new Query<T>(this, state);
+        IQueryable IQueryProvider.CreateQuery(Expression expression) => CreateQuery(expression);
+
+        /// <summary>
+        /// Gets the state object associated with a query
+        /// </summary>
+        protected object? GetState(Query query)
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            if (!ReferenceEquals(query.Provider, this)) throw new ArgumentException("Incorrect provider; the state object is only available to the provider that created the query", nameof(query));
+            return query.ProviderState;
+        }
+
         private Query CreateQuery(Expression expression)
         {
             if (IsFromQueryable(expression, out var method, out var args, out var query))
@@ -451,11 +461,11 @@ namespace SimpleLINQ
         /// <summary>
         /// Get a synchronous iterator for the given <see cref="Query"/>
         /// </summary>
-        public abstract IEnumerator<TElement> GetEnumerator<TElement>(Query query);
+        protected internal abstract IEnumerator<TElement> GetEnumerator<TElement>(Query query);
         /// <summary>
         /// Get an asynchronous iterator for the given <see cref="Query"/>
         /// </summary>
-        public abstract IAsyncEnumerator<TElement> GetAsyncEnumerator<TElement>(Query query, CancellationToken cancellationToken);
+        protected internal abstract IAsyncEnumerator<TElement> GetAsyncEnumerator<TElement>(Query query, CancellationToken cancellationToken);
 
         /// <summary>
         /// After asserting that the types are the same, safely perform an in-place type coercion; this is useful for implementing <see cref="ExecuteAggregate{TResult}(Query, Aggregate)"/>
