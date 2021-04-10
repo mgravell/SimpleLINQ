@@ -240,10 +240,10 @@ namespace SimpleLINQ.Async
         /// <summary>
         /// Asynchronous version of <see cref="Queryable.Min{TSource, TResult}(IQueryable{TSource}, Expression{Func{TSource, TResult}})"/>.
         /// </summary>
-        public static ValueTask<TValue> MinAsync<TSource, TValue>(this IQueryable<TSource> source, Expression<Func<TSource, TValue>> selector, CancellationToken cancellationToken = default)
+        public static ValueTask<TResult> MinAsync<TSource, TResult>(this IQueryable<TSource> source, Expression<Func<TSource, TResult>> selector, CancellationToken cancellationToken = default)
         {
             var query = GetQuery(source).ApplySelect(selector);
-            return query.Provider.ExecuteAggregateAsync<TValue>(query, Aggregate.Minimum, cancellationToken);
+            return query.Provider.ExecuteAggregateAsync<TResult>(query, Aggregate.Minimum, cancellationToken);
         }
 
         /// <summary>
@@ -258,11 +258,41 @@ namespace SimpleLINQ.Async
         /// <summary>
         /// Asynchronous version of <see cref="Queryable.Max{TSource, TResult}(IQueryable{TSource}, Expression{Func{TSource, TResult}})"/>.
         /// </summary>
-        public static ValueTask<TValue> MaxAsync<TSource, TValue>(this IQueryable<TSource> source, Expression<Func<TSource, TValue>> selector, CancellationToken cancellationToken = default)
+        public static ValueTask<TResult> MaxAsync<TSource, TResult>(this IQueryable<TSource> source, Expression<Func<TSource, TResult>> selector, CancellationToken cancellationToken = default)
         {
             var query = GetQuery(source).ApplySelect(selector);
-            return query.Provider.ExecuteAggregateAsync<TValue>(query, Aggregate.Maximum, cancellationToken);
+            return query.Provider.ExecuteAggregateAsync<TResult>(query, Aggregate.Maximum, cancellationToken);
         }
+
+        /// <summary>
+        /// Asynchronous version of <see cref="Queryable.ElementAt{TSource}(IQueryable{TSource}, int)"/>.
+        /// </summary>
+        public static ValueTask<TSource> ElementAtAsync<TSource>(this IQueryable<TSource> source, int index, CancellationToken cancellationToken = default)
+        {
+            var query = GetQuery(source).ApplySkip(index);
+            return query.Provider.ExecuteAggregateAsync<TSource>(query, Aggregate.First, cancellationToken);
+        }
+        /// <summary>
+        /// Asynchronous version of <see cref="Queryable.ElementAtOrDefault{TSource}(IQueryable{TSource}, int)"/>.
+        /// </summary>
+        public static ValueTask<TSource> ElementAtOrDefaultAsync<TSource>(this IQueryable<TSource> source, int index, CancellationToken cancellationToken = default)
+        {
+            var query = GetQuery(source).ApplySkip(index);
+            return query.Provider.ExecuteAggregateAsync<TSource>(query, Aggregate.FirstOrDefault, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronous version of <see cref="Queryable.Contains{TSource}(IQueryable{TSource}, TSource)"/>.
+        /// </summary>
+        public static ValueTask<bool> ContainsAsync<TSource>(this IQueryable<TSource> source, TSource item, CancellationToken cancellationToken = default)
+        {
+            var p = Expression.Parameter(typeof(TSource), "source");
+            var where = Expression.Lambda<Func<TSource, bool>>(Expression.Equal(
+                p, Expression.Constant(item, typeof(TSource))), p);
+            var query = GetQuery(source).ApplyWhere(where);
+            return query.Provider.ExecuteAggregateAsync<bool>(query, Aggregate.Any, cancellationToken);
+        }
+
 
         internal static async ValueTask<List<TSource>> ToListCoreAsync<TSource>(Query query, CancellationToken cancellationToken)
         {
