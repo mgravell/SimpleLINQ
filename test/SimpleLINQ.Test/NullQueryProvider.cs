@@ -52,6 +52,7 @@ namespace SimpleLINQ.Test
                 var arr = new OrderClause[query.OrderCount];
                 query.CopyOrderTo(arr);
                 dynamic d = data;
+                // not currently working; needs some reflection love - performance doesn't matter here
                 d = arr[0].Ascending ? Enumerable.OrderBy(d, arr[0].Expression) : Enumerable.OrderByDescending(d, arr[0].Expression);
                 for (int i = 1; i < arr.Length; i++)
                 {
