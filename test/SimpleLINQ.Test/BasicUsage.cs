@@ -1,3 +1,4 @@
+using SimpleLINQ.Async;
 using SimpleLINQ.Internal;
 using System;
 using System.Linq;
@@ -174,7 +175,7 @@ namespace SimpleLINQ.Test
         public void CanCallToList()
         {
             IQueryable<Foo> query = CreateQuery();
-            query.Where(x => x.Bar == "abc" && x.Blap == 123).ToList();
+            _ = query.Where(x => x.Bar == "abc" && x.Blap == 123).ToList();
         }
 
 
@@ -217,6 +218,25 @@ namespace SimpleLINQ.Test
             Assert.Equal(2, query.Select(x => x.Blap).ElementAt(2));
 
             Assert.Equal(0, query.Where(x => x.Blap > 99).Select(x => x.Blap).ElementAtOrDefault(2));
+        }
+
+        [Fact]
+        public async Task CanCallElementAtAsync()
+        {
+            IQueryable<Foo> query = CreateQuery(4);
+            Assert.Equal(2, await query.Select(x => x.Blap).ElementAtAsync(2));
+            Assert.Equal(0, await query.Where(x => x.Blap > 99).Select(x => x.Blap).ElementAtOrDefaultAsync(2));
+        }
+
+        [Fact]
+        public async Task CanCallElementAt_Index_Async()
+        {
+            IQueryable<Foo> query = CreateQuery(4).OrderBy(x => x.Blap);
+            Assert.Equal(2, await query.Select(x => x.Blap).ElementAtAsync((Index)2));
+            Assert.Equal(0, await query.Where(x => x.Blap > 99).Select(x => x.Blap).ElementAtOrDefaultAsync((Index)2));
+
+            Assert.Equal(3, await query.Select(x => x.Blap).ElementAtAsync(new Index(1, true)));
+            Assert.Equal(0, await query.OrderBy(x => x.Blap).Select(x => x.Blap).ElementAtOrDefaultAsync(new Index(0, true)));
         }
 
         [Fact]

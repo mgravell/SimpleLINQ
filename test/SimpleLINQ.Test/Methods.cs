@@ -56,6 +56,11 @@ namespace SimpleLINQ.Test
                         p => p.ParameterType.IsGenericType
                         && p.ParameterType.GetGenericTypeDefinition() == typeof(IEqualityComparer<>)) => false,
 
+                    "Chunk" => false, // .NET 6 only
+                    nameof(Queryable.FirstOrDefault) when x.GetParameters().Any(x => x.Name == "defaultValue") => false,
+                    nameof(Queryable.LastOrDefault) when x.GetParameters().Any(x => x.Name == "defaultValue") => false,
+                    nameof(Queryable.SingleOrDefault) when x.GetParameters().Any(x => x.Name == "defaultValue") => false,
+
                     // supported via core API
                     nameof(Queryable.OrderBy) => false,
                     nameof(Queryable.OrderByDescending) => false,
@@ -71,8 +76,9 @@ namespace SimpleLINQ.Test
                     // include everything else
                     _ => true,
                 })
-                .Select(x => NormalizeMethodSignature(x, makeAsync)).ToHashSet();
-            
+                .OrderBy(x => x.Name)
+                .Select(x => NormalizeMethodSignature(x, makeAsync)).ToList();
+
             var mine = typeof(QueryableAsyncExtensions).GetMethods(BindingFlags.Public | BindingFlags.Static)
                 .Where(x => x.Name switch
                 {
@@ -80,22 +86,26 @@ namespace SimpleLINQ.Test
                     nameof(QueryableAsyncExtensions.ToListAsync) => false,
                     nameof(QueryableAsyncExtensions.ToArrayAsync) => false,
                     nameof(QueryableAsyncExtensions.AsAsyncEnumerable) => false,
-
+#if !NET6_0_OR_GREATER
+                    nameof(QueryableAsyncExtensions.ElementAtAsync) when x.GetParameters().Any(x => x.ParameterType == typeof(Index)) => false,
+                    nameof(QueryableAsyncExtensions.ElementAtOrDefaultAsync) when x.GetParameters().Any(x => x.ParameterType == typeof(Index)) => false,
+#endif
                     // include everything else
                     _ => true,
                 })
-                .Select(x => NormalizeMethodSignature(x, false)).ToHashSet();
+                .OrderBy(x => x.Name)
+                .Select(x => NormalizeMethodSignature(x, false)).ToList();
 
             Log($"{mine.Count} vs {theirs.Count}");
             int failures = 0;
             Log("====== Missing APIs:");
-            foreach (var method in theirs.Where(x => !mine.Contains(x)).OrderBy(x => x))
+            foreach (var method in theirs.Where(x => !mine.Contains(x)))
             {
                 failures++;
                 Log(method);
             }
             Log("====== Extra APIs:");
-            foreach (var method in mine.Where(x => !theirs.Contains(x)).OrderBy(x => x))
+            foreach (var method in mine.Where(x => !theirs.Contains(x)))
             {
                 failures++;
                 Log(method);
@@ -106,9 +116,11 @@ namespace SimpleLINQ.Test
         static string NormalizeMethodSignature(MethodInfo method, bool makeAsync)
         {
             var sb = new StringBuilder();
+            if (method.IsPublic) sb.Append("public ");
+            if (method.IsStatic) sb.Append("static ");
             if (makeAsync) sb.Append("ValueTask<");
             AppendTypeName(method.ReturnType, sb);
-            if (makeAsync) sb.Append(">");
+            if (makeAsync) sb.Append('>');
 
             sb.Append(' ').Append(makeAsync ? method.Name + "Async" : method.Name);
             if (method.IsGenericMethodDefinition)
@@ -163,7 +175,7 @@ namespace SimpleLINQ.Test
                 AppendTypeName(typeof(CancellationToken), sb).Append(" cancellationToken = default");
             }
 
-            return sb.Append(')').ToString();
+            return sb.Append(");").ToString();
 
             static StringBuilder AppendTypeName(Type type, StringBuilder sb)
             {
@@ -186,6 +198,8 @@ namespace SimpleLINQ.Test
                 if (type == typeof(string)) return sb.Append("string");
                 if (type == typeof(void)) return sb.Append("void");
                 if (type == typeof(bool)) return sb.Append("bool");
+                if (type == typeof(nuint)) return sb.Append("nuint");
+                if (type == typeof(nint)) return sb.Append("nint");
 
                 if (type.IsGenericType && !type.IsGenericTypeDefinition)
                 {

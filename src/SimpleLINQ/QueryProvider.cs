@@ -1,6 +1,7 @@
 ﻿using SimpleLINQ.Internal;
 using SimpleLINQ.Transports;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
@@ -37,32 +38,32 @@ namespace SimpleLINQ
 
         private Query CreateQuery(Expression expression)
         {
-            if (IsFromQueryable(expression, out var method, out var args, out var query))
+            if (IsFromQueryable(expression, out var method, out var args, out var query, out var argCount))
             {
                 switch (method.Name)
                 {
-                    case nameof(Queryable.Where) when args.Count == 2 && TryGetLambda(args[1], out var lambda):
+                    case nameof(Queryable.Where) when argCount == 1 && TryGetLambda(args[1], out var lambda):
                         return query.ApplyWhere(lambda);
-                    case nameof(Queryable.Skip) when args.Count == 2
+                    case nameof(Queryable.Skip) when argCount == 1
                                 && (args[1] as ConstantExpression)?.Value is int skip:
                         return query.ApplySkip(skip);
-                    case nameof(Queryable.Take) when args.Count == 2
+                    case nameof(Queryable.Take) when argCount == 1
                                 && (args[1] as ConstantExpression)?.Value is int take:
                         return query.ApplyTake(take);
-                    case nameof(Queryable.OrderBy) when args.Count == 2 && TryGetLambda(args[1], out var lambda):
+                    case nameof(Queryable.OrderBy) when argCount == 1 && TryGetLambda(args[1], out var lambda):
                         return query.ApplyOrderBy(lambda, true, true);
-                    case nameof(Queryable.OrderByDescending) when args.Count == 2 && TryGetLambda(args[1], out var lambda):
+                    case nameof(Queryable.OrderByDescending) when argCount == 1 && TryGetLambda(args[1], out var lambda):
                         return query.ApplyOrderBy(lambda, true, false);
-                    case nameof(Queryable.ThenBy) when args.Count == 2 && TryGetLambda(args[1], out var lambda):
+                    case nameof(Queryable.ThenBy) when argCount == 1 && TryGetLambda(args[1], out var lambda):
                         return query.ApplyOrderBy(lambda, false, true);
-                    case nameof(Queryable.ThenByDescending) when args.Count == 2 && TryGetLambda(args[1], out var lambda):
+                    case nameof(Queryable.ThenByDescending) when argCount == 1 && TryGetLambda(args[1], out var lambda):
                         return query.ApplyOrderBy(lambda, false, false);
-                    case nameof(Queryable.Reverse) when args.Count == 1:
+                    case nameof(Queryable.Reverse) when argCount == 0:
                         return query.ApplyReverse();
-                    case nameof(Queryable.Select) when args.Count == 2 && TryGetLambda(args[1], out var lambda)
+                    case nameof(Queryable.Select) when argCount == 1 && TryGetLambda(args[1], out var lambda)
                         && lambda.Parameters.Count == 1 && lambda.Parameters[0].Type == query.ElementType:
                         return query.ApplySelect(lambda);
-                    case nameof(Queryable.Distinct) when args.Count == 1:
+                    case nameof(Queryable.Distinct) when argCount == 0:
                         return query.ApplyDistinct(true);
                 }
             }
@@ -112,20 +113,23 @@ namespace SimpleLINQ
             throw new NotSupportedException($"Unhandled '{expression.NodeType}' expression to '{caller}'");
         }
 
-        internal static bool IsFromQueryable(Expression expression, [NotNullWhen(true)] out MethodInfo? method, [NotNullWhen(true)] out ReadOnlyCollection<Expression>? args, [NotNullWhen(true)] out Query? query)
+        internal static bool IsFromQueryable(Expression expression, [NotNullWhen(true)] out MethodInfo? method, [NotNullWhen(true)] out ReadOnlyCollection<Expression>? args, [NotNullWhen(true)] out Query? query, out int argCount)
         {
             switch (expression.NodeType)
             {
                 case ExpressionType.Call when expression is MethodCallExpression mce
+                    && (args = mce.Arguments).Count > 0
                     && mce.Method is MethodInfo mmethod:
 
                     if ((mmethod.DeclaringType == typeof(Queryable)
                     || mmethod.DeclaringType?.FullName == "System.Linq.AsyncQueryable"
-                        ) && (mce.Arguments[0] as ConstantExpression)?.Value is Query oorigin)
+                        ) && (args[0] as ConstantExpression)?.Value is Query oorigin)
                     {
-                        args = mce.Arguments;
                         method = mmethod;
                         query = oorigin;
+                        argCount = args.Count - 1; // don't count the "this" source
+                        if (argCount > 0 && args[argCount].Type == typeof(CancellationToken))
+                            argCount--; // don't count the cancellation-token
                         return true;
                     }
                     break;
@@ -133,6 +137,7 @@ namespace SimpleLINQ
             args = default;
             method = default;
             query = default;
+            argCount = default;
             return false;
         }
 
@@ -493,81 +498,85 @@ namespace SimpleLINQ
 
         internal static bool TryResolveAggregate(Expression expression, [NotNullWhen(true)] out Query? query, out Aggregate aggregate)
         {
-            if (IsFromQueryable(expression, out var method, out var args, out query))
+            if (IsFromQueryable(expression, out var method, out var args, out query, out var argCount))
             {
                 LambdaExpression? lambda = null;
-                if (args.Count > 1) TryGetLambda(args[1], out lambda);
+                if (argCount > 0)
+                {
+                    if (TryGetLambda(args[1], out lambda))
+                        argCount--; // accounted for; simplifies checks below
+                }
 
                 const string Async = "Async";
 
                 switch (method.Name)
                 {
-                    case nameof(Queryable.Count):
-                    case nameof(Queryable.LongCount):
-                    case nameof(Queryable.Count) + Async:
-                    case nameof(Queryable.LongCount) + Async:
+                    case nameof(Queryable.Count) when argCount == 0:
+                    case nameof(Queryable.LongCount) when argCount == 0:
+                    case nameof(Queryable.Count) + Async when argCount == 0:
+                    case nameof(Queryable.LongCount) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplyWhere(lambda);
                         aggregate = Aggregate.Count;
                         return true;
-                    case nameof(Queryable.Single):
-                    case nameof(Queryable.Single) + Async:
+                    case nameof(Queryable.Single) when argCount == 0:
+                    case nameof(Queryable.Single) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplyWhere(lambda);
                         aggregate = Aggregate.Single;
                         return true;
-                    case nameof(Queryable.SingleOrDefault):
-                    case nameof(Queryable.SingleOrDefault) + Async:
+                    case nameof(Queryable.SingleOrDefault) when argCount == 0:
+                    case nameof(Queryable.SingleOrDefault) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplyWhere(lambda);
                         aggregate = Aggregate.SingleOrDefault;
                         return true;
-                    case nameof(Queryable.First):
-                    case nameof(Queryable.First) + Async:
+                    case nameof(Queryable.First) when argCount == 0:
+                    case nameof(Queryable.First) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplyWhere(lambda);
                         aggregate = Aggregate.First;
                         return true;
-                    case nameof(Queryable.FirstOrDefault):
-                    case nameof(Queryable.FirstOrDefault) + Async:
+                    case nameof(Queryable.FirstOrDefault) when argCount == 0:
+                    case nameof(Queryable.FirstOrDefault) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplyWhere(lambda);
                         aggregate = Aggregate.FirstOrDefault;
                         return true;
-                    case nameof(Queryable.Last):
-                    case nameof(Queryable.Last) + Async:
+                    case nameof(Queryable.Last) when argCount == 0:
+                    case nameof(Queryable.Last) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplyWhere(lambda);
                         query = query.ApplyReverse();
                         aggregate = Aggregate.First;
                         return true;
-                    case nameof(Queryable.LastOrDefault):
-                    case nameof(Queryable.LastOrDefault) + Async:
+                    case nameof(Queryable.LastOrDefault) when argCount == 0:
+                    case nameof(Queryable.LastOrDefault) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplyWhere(lambda);
                         query = query.ApplyReverse();
                         aggregate = Aggregate.FirstOrDefault;
                         return true;
-                    case nameof(Queryable.Any):
-                    case nameof(Queryable.Any) + Async:
+                    case nameof(Queryable.Any) when argCount == 0:
+                    case nameof(Queryable.Any) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplyWhere(lambda);
                         aggregate = Aggregate.Any;
                         return true;
-                    case nameof(Queryable.Average):
-                    case nameof(Queryable.Average) + Async:
+                    case nameof(Queryable.Average) when argCount == 0:
+                    case nameof(Queryable.Average) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplySelect(lambda);
                         aggregate = Aggregate.Average;
                         return true;
-                    case nameof(Queryable.Sum):
-                    case nameof(Queryable.Sum) + Async:
+                    case nameof(Queryable.Sum) when argCount == 0:
+                    case nameof(Queryable.Sum) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplySelect(lambda);
                         aggregate = Aggregate.Sum;
                         return true;
-                    case nameof(Queryable.Min):
-                    case nameof(Queryable.Min) + Async:
+                    case nameof(Queryable.Min) when argCount == 0:
+                    case nameof(Queryable.Min) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplySelect(lambda);
                         aggregate = Aggregate.Minimum;
                         return true;
-                    case nameof(Queryable.Max):
-                    case nameof(Queryable.Max) + Async:
+                    case nameof(Queryable.Max) when argCount == 0:
+                    case nameof(Queryable.Max) + Async when argCount == 0:
                         if (lambda is not null) query = query.ApplySelect(lambda);
                         aggregate = Aggregate.Maximum;
                         return true;
-                    case nameof(Queryable.All):
-                    case nameof(Queryable.All) + Async:
+                    case nameof(Queryable.All) when argCount == 0:
+                    case nameof(Queryable.All) + Async when argCount == 0:
                         if (lambda is not null)
                         {
                             query = query.ApplyWhere(lambda.Negate());
@@ -575,56 +584,54 @@ namespace SimpleLINQ
                             return true;
                         }
                         break;
-                    case nameof(Queryable.ElementAt):
-                    case nameof(Queryable.ElementAt) + Async:
-                        if (TryGetIndex(args, out var index))
+                    case nameof(Queryable.ElementAt) when argCount == 1 && lambda is null:
+                    case nameof(Queryable.ElementAt) + Async when argCount == 1 && lambda is null:
+                        if (TryApplyIndex(ref query, args))
                         {
-                            query = query.ApplySkip(index);
                             aggregate = Aggregate.First;
                             return true;
                         }
                         break;
-                    case nameof(Queryable.ElementAtOrDefault):
-                    case nameof(Queryable.ElementAtOrDefault) + Async:
-                        if (TryGetIndex(args, out index))
+                    case nameof(Queryable.ElementAtOrDefault) when argCount == 1 && lambda is null:
+                    case nameof(Queryable.ElementAtOrDefault) + Async when argCount == 1 && lambda is null:
+                        if (TryApplyIndex(ref query, args))
                         {
-                            query = query.ApplySkip(index);
                             aggregate = Aggregate.FirstOrDefault;
                             return true;
                         }
                         break;
-                    case nameof(Queryable.Contains):
-                    case nameof(Queryable.Contains) + Async:
-                        if (args.Count > 1)
-                        {
-                            var p = Expression.Parameter(query.ElementType, "source");
-                            var where = Expression.Lambda(Expression.Equal(p, args[1]), p);
-                            query = query.ApplyWhere(where);
-                            aggregate = Aggregate.Any;
-                            return true;
-                        }
-                        break;
+                    case nameof(Queryable.Contains) when argCount == 1 && lambda is null:
+                    case nameof(Queryable.Contains) + Async when argCount == 1 && lambda is null:
+                        var p = Expression.Parameter(query.ElementType, "source");
+                        var where = Expression.Lambda(Expression.Equal(p, args[1]), p);
+                        query = query.ApplyWhere(where);
+                        aggregate = Aggregate.Any;
+                        return true;
                 }
             }
             aggregate = default;
             return false;
 
-            static bool TryGetIndex(ReadOnlyCollection<Expression> args, out long index)
+            static bool TryApplyIndex(ref Query query, ReadOnlyCollection<Expression> args)
             {
                 if (args.Count > 1 && args[1].TryGetConstantValue(out var value, out _))
                 {
                     if (value is int i)
                     {
-                        index = i;
+                        query = query.ApplySkip(i);
                         return true;
                     }
                     if (value is long l)
                     {
-                        index = l;
+                        query = query.ApplySkip(l);
+                        return true;
+                    }
+                    if (value is Index ix)
+                    {
+                        query = query.ApplySkipForElementAt(ix);
                         return true;
                     }
                 }
-                index = default;
                 return false;
             }
         }

@@ -75,6 +75,16 @@ namespace SimpleLINQ
         // implementation machinery
         internal abstract IEnumerator GetUntypedEnumerator();
         internal abstract Query ApplySkip(long skip);
+        internal Query ApplySkipForElementAt(Index index)
+        {
+            var skip = index.Value;
+            if (index.IsFromEnd)
+            {
+                if (skip == 0) return ApplyTake(0); // 0 from end means "EOF"
+                return ApplyReverse().ApplySkip(skip - 1);
+            }
+            return ApplySkip(skip);
+        }
         internal abstract Query ApplyTake(long take);
         internal abstract Query ApplyWhere(LambdaExpression predicate);
         internal abstract Query ApplyOrderBy(LambdaExpression expression, bool newGroup, bool ascending);

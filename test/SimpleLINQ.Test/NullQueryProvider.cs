@@ -47,6 +47,19 @@ namespace SimpleLINQ.Test
                 ConsiderHandled(QueryTerms.Take);
             }
             
+            if (query.OrderCount != 0)
+            {
+                var arr = new OrderClause[query.OrderCount];
+                query.CopyOrderTo(arr);
+                dynamic d = data;
+                d = arr[0].Ascending ? Enumerable.OrderBy(d, arr[0].Expression) : Enumerable.OrderByDescending(d, arr[0].Expression);
+                for (int i = 1; i < arr.Length; i++)
+                {
+                    d = arr[i].Ascending ? Enumerable.ThenBy(d, arr[i].Expression) : Enumerable.ThenByDescending(d, arr[i].Expression);
+                }
+                data = d;
+                ConsiderHandled(QueryTerms.OrderBy);
+            }
             if (terms != 0)
                 throw new InvalidOperationException($"Query generator failed to consider: {terms}");
 

@@ -46,15 +46,15 @@ namespace SimpleLINQ.Async.Internal
             }
 
             // RX doesn't provide default implementations for ToListAsync/ToArrayAsync - we need to do that ourselves
-            if (IsFromQueryable(expression, out var method, out var args, out query))
+            if (IsFromQueryable(expression, out var method, out var args, out query, out var argCount))
             {
                 if (ReferenceEquals(query, this)) query = Tail; // skip a level of indirection when possible
                 switch (method.Name)
                 {
-                    case nameof(AsyncQueryable.ToListAsync) when args.Count == 2 && typeof(TResult) == typeof(List<T>):
+                    case nameof(AsyncQueryable.ToListAsync) when argCount == 0 && typeof(TResult) == typeof(List<T>):
                         if (query.Take == 0) return CoerceAsync<List<T>, TResult>(new List<T>()); // trivial
                         return Coerce<ValueTask<List<T>>, ValueTask<TResult>>(QueryableAsyncExtensions.ToListCoreAsync<T>(query, cancellationToken));
-                    case nameof(AsyncQueryable.ToArrayAsync) when args.Count == 2 && typeof(TResult) == typeof(T[]):
+                    case nameof(AsyncQueryable.ToArrayAsync) when argCount == 0 && typeof(TResult) == typeof(T[]):
                         if (query.Take == 0) return CoerceAsync<T[], TResult>(Array.Empty<T>()); // trivial
                         return Coerce<ValueTask<T[]>, ValueTask<TResult>>(QueryableAsyncExtensions.ToArrayCoreAsync<T>(query, cancellationToken));
                 }

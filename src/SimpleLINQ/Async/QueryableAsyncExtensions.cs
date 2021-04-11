@@ -11,7 +11,7 @@ namespace SimpleLINQ.Async
     /// <summary>
     /// Utility methods for working with queries in an asynchronous way
     /// </summary>
-    public static class QueryableAsyncExtensions
+    public static partial class QueryableAsyncExtensions
     {
         /// <summary>
         /// Converts a synchronous query to an asynchronous sequence
@@ -278,6 +278,23 @@ namespace SimpleLINQ.Async
         public static ValueTask<TSource> ElementAtOrDefaultAsync<TSource>(this IQueryable<TSource> source, int index, CancellationToken cancellationToken = default)
         {
             var query = GetQuery(source).ApplySkip(index);
+            return query.Provider.ExecuteAggregateAsync<TSource>(query, Aggregate.FirstOrDefault, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronous version of <see cref="Queryable.ElementAt{TSource}(IQueryable{TSource}, int)"/>.
+        /// </summary>
+        public static ValueTask<TSource> ElementAtAsync<TSource>(this IQueryable<TSource> source, Index index, CancellationToken cancellationToken = default)
+        {
+            var query = GetQuery(source).ApplySkipForElementAt(index);
+            return query.Provider.ExecuteAggregateAsync<TSource>(query, Aggregate.First, cancellationToken);
+        }
+        /// <summary>
+        /// Asynchronous version of <see cref="Queryable.ElementAtOrDefault{TSource}(IQueryable{TSource}, int)"/>.
+        /// </summary>
+        public static ValueTask<TSource> ElementAtOrDefaultAsync<TSource>(this IQueryable<TSource> source, Index index, CancellationToken cancellationToken = default)
+        {
+            var query = GetQuery(source).ApplySkipForElementAt(index);
             return query.Provider.ExecuteAggregateAsync<TSource>(query, Aggregate.FirstOrDefault, cancellationToken);
         }
 

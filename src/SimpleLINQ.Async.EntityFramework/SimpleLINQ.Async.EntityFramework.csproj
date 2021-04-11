@@ -3,7 +3,7 @@
     <RootNamespace>SimpleLINQ.Async</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.5" />
     <ProjectReference Include="..\SimpleLINQ\SimpleLINQ.csproj" />
   </ItemGroup>
 </Project>
