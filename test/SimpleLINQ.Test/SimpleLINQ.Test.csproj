@@ -3,6 +3,8 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <Nullable>disable</Nullable>
+    <TargetFramework></TargetFramework>
+    <TargetFrameworks>netcoreapp3.1;net5;net6</TargetFrameworks>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
