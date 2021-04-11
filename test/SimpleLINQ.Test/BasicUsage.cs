@@ -15,7 +15,7 @@ namespace SimpleLINQ.Test
             var arr = new Foo[count];
             for (int i = 0; i < count; i++)
             {
-                arr[i] = new Foo();
+                arr[i] = new Foo { Blap = i };
             }
             return new NullQueryProvider<Foo>(arr).CreateQuery<Foo>();
         }
@@ -208,6 +208,23 @@ namespace SimpleLINQ.Test
         {
             IQueryable<Foo> query = CreateQuery();
             query.All(x => x.Bar == "abc" && x.Blap == 123);
+        }
+
+        [Fact]
+        public void CanCallElementAt()
+        {
+            IQueryable<Foo> query = CreateQuery(4);
+            Assert.Equal(2, query.Select(x => x.Blap).ElementAt(2));
+
+            Assert.Equal(0, query.Where(x => x.Blap > 99).Select(x => x.Blap).ElementAtOrDefault(2));
+        }
+
+        [Fact]
+        public void CanCallContains()
+        {
+            IQueryable<Foo> query = CreateQuery(4);
+            Assert.True(query.Select(x => x.Blap).Contains(2));
+            Assert.False(query.Select(x => x.Blap).Contains(7));
         }
 
 

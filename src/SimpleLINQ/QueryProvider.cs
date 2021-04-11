@@ -593,6 +593,17 @@ namespace SimpleLINQ
                             return true;
                         }
                         break;
+                    case nameof(Queryable.Contains):
+                    case nameof(Queryable.Contains) + Async:
+                        if (args.Count > 1)
+                        {
+                            var p = Expression.Parameter(query.ElementType, "source");
+                            var where = Expression.Lambda(Expression.Equal(p, args[1]), p);
+                            query = query.ApplyWhere(where);
+                            aggregate = Aggregate.Any;
+                            return true;
+                        }
+                        break;
                 }
             }
             aggregate = default;

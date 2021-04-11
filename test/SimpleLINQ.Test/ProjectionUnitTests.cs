@@ -74,8 +74,6 @@ namespace SimpleLINQ.Test
             var merged = ExpressionUtils.Merge(first, second);
             Assert.Equal(Assert.Single(first.Parameters).Type, Assert.Single(merged.Parameters).Type);
             Assert.Equal(@"x => new #(A = (x.A * 6), B = (x.B + 10), C = x.C.AddDays(1).AddDays(2))", Log(StripType(merged)));
-
-
         }
     }
 }
