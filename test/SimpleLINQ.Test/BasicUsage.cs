@@ -237,6 +237,9 @@ namespace SimpleLINQ.Test
 
             Assert.Equal(3, await query.Select(x => x.Blap).ElementAtAsync(new Index(1, true)));
             Assert.Equal(0, await query.OrderBy(x => x.Blap).Select(x => x.Blap).ElementAtOrDefaultAsync(new Index(0, true)));
+
+            Assert.Equal(3, await query.Select(x => x.Blap).ElementAtAsync(^1));
+            Assert.Equal(0, await query.OrderBy(x => x.Blap).Select(x => x.Blap).ElementAtOrDefaultAsync(^0));
         }
 
         [Fact]
