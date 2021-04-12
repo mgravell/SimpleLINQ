@@ -26,8 +26,8 @@ namespace SimpleLINQ.Test
             void ConsiderHandled(QueryTerms handled)
                 => terms &= ~handled;
 
-            var data = FilterAndProject<TElement>(query);
-            ConsiderHandled(QueryTerms.Where | QueryTerms.Select);
+            var data = FilterOrderAndProject<TElement>(query);
+            ConsiderHandled(QueryTerms.Where | QueryTerms.OrderBy | QueryTerms.Select);
 
             if (query.Distinct)
             {
@@ -47,36 +47,40 @@ namespace SimpleLINQ.Test
                 ConsiderHandled(QueryTerms.Take);
             }
             
-            if (query.OrderCount != 0)
-            {
-                var arr = new OrderClause[query.OrderCount];
-                query.CopyOrderTo(arr);
-                dynamic d = data;
-                // not currently working; needs some reflection love - performance doesn't matter here
-                d = arr[0].Ascending ? Enumerable.OrderBy(d, arr[0].Expression) : Enumerable.OrderByDescending(d, arr[0].Expression);
-                for (int i = 1; i < arr.Length; i++)
-                {
-                    d = arr[i].Ascending ? Enumerable.ThenBy(d, arr[i].Expression) : Enumerable.ThenByDescending(d, arr[i].Expression);
-                }
-                data = d;
-                ConsiderHandled(QueryTerms.OrderBy);
-            }
             if (terms != 0)
                 throw new InvalidOperationException($"Query generator failed to consider: {terms}");
 
             return data.GetEnumerator();
         }
-        private IEnumerable<TElement> FilterAndProject<TElement>(Query query)
+        private IEnumerable<TElement> FilterOrderAndProject<TElement>(Query query)
         {
-            var filter = ((Expression<Func<T, bool>>)query.Predicate)?.Compile(preferInterpretation: true);
+            
             var projection = ((Expression<Func<T, TElement>>)query.Projection)?.Compile(preferInterpretation: true);
 
-            foreach (var item in _values)
+            IEnumerable<T> values = _values;
+            var filter = ((Expression<Func<T, bool>>)query.Predicate)?.Compile(preferInterpretation: true);
+            if (filter is not null)
             {
-                if (filter is null || filter(item))
+                values = Enumerable.Where(values, filter);
+            }
+            if (query.OrderCount != 0)
+            {
+                // performance doesn't matter here; we'll be fairly lazy
+                var arr = new OrderClause[query.OrderCount];
+                query.CopyOrderTo(arr);
+                dynamic d = values;
+                for (int i = 0; i < arr.Length; i++)
                 {
-                    yield return projection is null ? (TElement)(object)item : projection(item);
+                    dynamic expr = arr[i].Expression.Compile();
+                    d = i == 0
+                        ? arr[0].Ascending ? Enumerable.OrderBy(d, expr) : Enumerable.OrderByDescending(d, expr)
+                        : arr[i].Ascending ? Enumerable.ThenBy(d, expr) : Enumerable.ThenByDescending(d, expr);
                 }
+                values = d;
+            }
+            foreach (var item in values)
+            {
+                yield return projection is null ? (TElement)(object)item : projection(item);
             }
         }
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
